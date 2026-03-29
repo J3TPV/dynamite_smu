@@ -1,0 +1,193 @@
+/* Custom styles for the microwave website */
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+}
+
+/* Cards with hover effect */
+.card {
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+/* Navigation active state */
+nav button:active,
+nav button:focus {
+  outline: none;
+}
+
+/* Responsive spacing */
+@media (max-width: 768px) {
+  main {
+    padding: 1rem;
+  }
+  
+  nav {
+    padding: 0.5rem 0;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--b2) / var(--tw-bg-opacity, 1));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--bc) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--bc) / 0.5);
+}
+
+/* Footer styling */
+footer {
+  margin-top: auto;
+}
+
+/* Alert styling */
+.alert {
+  margin-bottom: 1rem;
+}
+
+/* Button transitions */
+button {
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  transform: scale(1.02);
+}
+
+.aplus-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 10, 0.75);
+  backdrop-filter: blur(6px);
+  animation: aplus-fade 2.95s ease-out both;
+}
+
+.aplus-text {
+  color: #fff;
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 900;
+  text-align: center;
+  padding: 1rem 2rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 32px rgba(255, 255, 255, 0.35), 0 0 80px rgba(251, 146, 60, 0.35);
+}
+
+@keyframes aplus-fade {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+}
+
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(24px) scale(0.98);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+  will-change: opacity, transform;
+}
+
+.scroll-reveal.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.page-fade-transition {
+  animation: fade-page 0.4s ease-in-out both;
+}
+
+@keyframes fade-page {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.time-rewind-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(8px);
+}
+
+.time-rewind-icon {
+  width: clamp(6rem, 14vw, 10rem);
+  height: clamp(6rem, 14vw, 10rem);
+  animation: time-rewind-spin 3s ease-out both;
+  filter: drop-shadow(0 0 24px rgba(255, 255, 255, 0.35)) drop-shadow(0 0 40px rgba(59, 130, 246, 0.25));
+}
+
+@keyframes time-rewind-spin {
+  0% {
+    opacity: 0;
+    transform: scale(0.75) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1) rotate(45deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05) rotate(180deg);
+  }
+  85% {
+    opacity: 1;
+    transform: scale(1.05) rotate(360deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1) rotate(420deg);
+  }
+}
+
+/* Grid alignment */
+.grid {
+  gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    gap: 1rem;
+  }
+}
