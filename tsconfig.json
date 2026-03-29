@@ -8,14 +8,6 @@
     "strict": false,
     "skipLibCheck": true,
     "baseUrl": ".",
-    "paths": {
-      "*": [
-        "/tmp/tasklet-deps/microwave-website-4a9f4beef740/node_modules/*"
-      ]
-    },
-    "typeRoots": [
-      "/tmp/tasklet-deps/microwave-website-4a9f4beef740/node_modules/@types"
-    ],
     "types": [
       "react",
       "react-dom"
