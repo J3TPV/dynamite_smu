@@ -1,5 +1,5 @@
 {
-  "name": "microwave-website",
-  "displayName": "Dynamite Website",
-  "description": "Educational website about dynamite with multi-page layout, navigation, and detailed content pages"
+  "name": "cadence-voice-planner",
+  "displayName": "Cadence — Voice Calendar Planner",
+  "description": "Plan your week by voice. Speak a task and Cadence parses it onto a calendar, then analyzes feasibility (conflicts, free slots) and a Time-Health Index measuring workload, balance, and breathing room."
 }
