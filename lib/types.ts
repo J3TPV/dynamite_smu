@@ -101,4 +101,10 @@ export interface Feasibility {
   /** Time-health of the day before and after adding the candidate */
   healthBefore: number;
   healthAfter: number;
+  /**
+   * A conflict-free start time (minutes from midnight) the candidate could move
+   * to on the same day, when its current slot clashes. Lets the UI offer a
+   * one-click "Move to {time}" instead of just describing the free slot.
+   */
+  suggestedStart?: number;
 }

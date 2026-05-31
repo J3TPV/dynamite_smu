@@ -28,11 +28,12 @@ interface Props {
   onEditEvent: (e: PlanEvent) => void;
   onToggleDone: (id: string) => void;
   onDelete: (id: string) => void;
+  onUpdateEvent: (id: string, patch: Partial<PlanEvent>) => void;
   onOpenImport: () => void;
   onQuickAdd: (e: PlanEvent) => void;
 }
 
-export const CalendarView: React.FC<Props> = ({ events, now, today, calView, onCalView, anchorISO, onAnchorISO, onAddEvent, onEditEvent, onToggleDone, onDelete, onOpenImport, onQuickAdd }) => {
+export const CalendarView: React.FC<Props> = ({ events, now, today, calView, onCalView, anchorISO, onAnchorISO, onAddEvent, onEditEvent, onToggleDone, onDelete, onUpdateEvent, onOpenImport, onQuickAdd }) => {
   const { settings } = useSettings();
   const hours = workingHours(settings);
   const [scope, setScope] = useState<'day' | 'week'>('day');
@@ -57,7 +58,7 @@ export const CalendarView: React.FC<Props> = ({ events, now, today, calView, onC
 
   return (
     <div className="space-y-4">
-      <VoiceCommand events={events} now={now} onAdd={onQuickAdd} />
+      <VoiceCommand events={events} now={now} onAdd={onQuickAdd} onEdit={onEditEvent} onDelete={onDelete} />
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -83,7 +84,7 @@ export const CalendarView: React.FC<Props> = ({ events, now, today, calView, onC
       {calView === 'month' ? (
         <>
           <div className="card bg-base-200 shadow-md"><div className="card-body p-3 md:p-4">
-            <MonthCalendar events={events} monthDate={anchor} selectedDate={selectedISO} today={today} onSelectDate={onAnchorISO} onOpenDay={openDay} onEventClick={onEditEvent} />
+            <MonthCalendar events={events} monthDate={anchor} selectedDate={selectedISO} today={today} onSelectDate={onAnchorISO} onOpenDay={openDay} onEventClick={onEditEvent} onMoveEvent={onUpdateEvent} onAddOnDay={iso => { onAnchorISO(iso); onAddEvent(iso); }} />
           </div></div>
           <div className="grid lg:grid-cols-3 gap-4 items-start">
             <div className="lg:col-span-2"><TimeHealthCard health={dayHealth} title={relativeDayLabel(selectedISO, now)} subtitle={weekdayLong(anchor)} /></div>
@@ -95,10 +96,12 @@ export const CalendarView: React.FC<Props> = ({ events, now, today, calView, onC
           <div className="lg:col-span-2 card bg-base-200 shadow-md"><div className="card-body p-3 md:p-4">
             {calView === 'week' ? (
               <WeekCalendar events={events} weekStart={weekStart} selectedDate={selectedISO} today={today} dayStart={hours.dayStart} dayEnd={hours.dayEnd}
-                onSelectDate={onAnchorISO} onShiftWeek={() => {}} onToggleDone={onToggleDone} onDelete={onDelete} onEventClick={onEditEvent} />
+                onSelectDate={onAnchorISO} onShiftWeek={() => {}} onToggleDone={onToggleDone} onDelete={onDelete} onEventClick={onEditEvent}
+                onMoveEvent={onUpdateEvent} onAddAt={(iso, start) => { onAnchorISO(iso); onAddEvent(iso, start); }} />
             ) : (
               <DayView dateISO={selectedISO} events={events} dayStart={hours.dayStart} dayEnd={hours.dayEnd}
-                onToggleDone={onToggleDone} onDelete={onDelete} onEventClick={onEditEvent} onAddAt={(start) => onAddEvent(selectedISO, start)} />
+                onToggleDone={onToggleDone} onDelete={onDelete} onEventClick={onEditEvent} onAddAt={(start) => onAddEvent(selectedISO, start)}
+                onMoveEvent={onUpdateEvent} />
             )}
           </div></div>
 

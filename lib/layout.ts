@@ -36,6 +36,11 @@ export function packColumns(events: TimeSpan[]): Record<string, Slot> {
   return res;
 }
 
+/** Snap a minute value to the nearest `step`-minute increment (default 15). */
+export function snap(minutes: number, step = 15): number {
+  return Math.round(minutes / step) * step;
+}
+
 /** Hour-boundary gridlines within a window, anchored to real clock hours. */
 export function clockHourLines(dayStart: number, dayEnd: number): number[] {
   const first = Math.ceil(dayStart / 60) * 60;

@@ -3,7 +3,7 @@ import { Check, Trash2, Plus, MapPin, ChevronUp, ChevronDown } from 'lucide-reac
 import { PlanEvent } from '../lib/types';
 import { durationToLabel, minutesToLabel } from '../lib/datetime';
 import { overlaps } from '../lib/analysis';
-import { packColumns, clockHourLines, Slot } from '../lib/layout';
+import { packColumns, clockHourLines, snap, Slot } from '../lib/layout';
 import { useCategoryMeta } from './SettingsContext';
 
 const HOUR_PX = 56;
@@ -17,9 +17,10 @@ interface Props {
   onDelete: (id: string) => void;
   onEventClick: (e: PlanEvent) => void;
   onAddAt: (startMinutes: number) => void;
+  onMoveEvent: (id: string, patch: { date: string; start: number }) => void;
 }
 
-export const DayView: React.FC<Props> = ({ dateISO, events, dayStart, dayEnd, onToggleDone, onDelete, onEventClick, onAddAt }) => {
+export const DayView: React.FC<Props> = ({ dateISO, events, dayStart, dayEnd, onToggleDone, onDelete, onEventClick, onAddAt, onMoveEvent }) => {
   const categoryMeta = useCategoryMeta();
   const dayEvents = events.filter(e => e.date === dateISO && !e.allDay).sort((a, b) => a.start - b.start);
   const allDay = events.filter(e => e.date === dateISO && e.allDay);
@@ -59,7 +60,21 @@ export const DayView: React.FC<Props> = ({ dateISO, events, dayStart, dayEnd, on
               <div key={h} className="absolute right-2 -translate-y-1/2 text-[0.7rem] text-base-content/40" style={{ top: ((h - dayStart) / 60) * HOUR_PX }}>{minutesToLabel(h).replace(':00', '')}</div>
             ))}
           </div>
-          <div className="relative border-l border-base-300" style={{ height: totalPx }}>
+          <div
+            className="relative border-l border-base-300"
+            style={{ height: totalPx }}
+            onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+            onDrop={e => {
+              e.preventDefault();
+              const raw = e.dataTransfer.getData('text/plain'); if (!raw) return;
+              try {
+                const { id, grabMin } = JSON.parse(raw);
+                const r = e.currentTarget.getBoundingClientRect();
+                const start = Math.max(0, Math.min(snap(dayStart + ((e.clientY - r.top) / HOUR_PX) * 60 - (grabMin || 0)), 1440 - 15));
+                onMoveEvent(id, { date: dateISO, start });
+              } catch { /* ignore malformed drag payload */ }
+            }}
+          >
             {lines.map(h => (
               <div key={h} className="absolute left-0 right-0 border-t border-base-300/60 pointer-events-none" style={{ top: ((h - dayStart) / 60) * HOUR_PX }} />
             ))}
@@ -110,9 +125,16 @@ const DayBlock: React.FC<{
   const widthPct = 100 / cols;
 
   return (
-    <div className="absolute px-1" style={{ top, height, left: `${widthPct * (slot?.col ?? 0)}%`, width: `${widthPct}%` }}>
+    <div className="absolute px-1" style={{ top, height, left: `${widthPct * (slot?.col ?? 0)}%`, width: `${widthPct}%` }} onClick={ev => ev.stopPropagation()}>
       <div
-        className={`group relative h-full rounded-lg px-2 py-1 overflow-hidden text-white shadow cursor-pointer ${e.done ? 'opacity-50' : ''}`}
+        draggable
+        onDragStart={ev => {
+          const r = ev.currentTarget.getBoundingClientRect();
+          const grabMin = ((ev.clientY - r.top) / HOUR_PX) * 60;
+          ev.dataTransfer.setData('text/plain', JSON.stringify({ id: e.id, grabMin }));
+          ev.dataTransfer.effectAllowed = 'move';
+        }}
+        className={`group relative h-full rounded-lg px-2 py-1 overflow-hidden text-white shadow cursor-grab active:cursor-grabbing ${e.done ? 'opacity-50' : ''}`}
         style={{ backgroundColor: meta.color, outline: conflict ? '2px solid var(--color-error)' : 'none' }}
         onClick={() => onEventClick(e)}
       >

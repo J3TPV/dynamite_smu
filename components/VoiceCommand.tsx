@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Mic, MicOff, Keyboard, Check, X, Wand2, AlertTriangle, CheckCircle2, Ban, Zap } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Mic, MicOff, Keyboard, Check, X, Wand2, AlertTriangle, CheckCircle2, Ban, Zap, CalendarClock, Pencil, Undo2 } from 'lucide-react';
 import { useSpeech } from '../lib/useSpeech';
 import { parseCommand } from '../lib/parser';
 import { evaluateFeasibility } from '../lib/analysis';
 import { Category, ParsedCommand, PlanEvent, Priority } from '../lib/types';
-import { durationToLabel, minutesToLabel } from '../lib/datetime';
+import { durationToLabel, minutesToLabel, relativeDayLabel } from '../lib/datetime';
 import { newId } from '../lib/storage';
 import { useCategoryMeta, useSettings } from './SettingsContext';
 import { workingHours } from '../lib/settings';
@@ -13,6 +13,8 @@ interface Props {
   events: PlanEvent[];
   now: Date;
   onAdd: (e: PlanEvent) => void;
+  onEdit?: (e: PlanEvent) => void;
+  onDelete?: (id: string) => void;
 }
 
 const EXAMPLES = [
@@ -30,17 +32,55 @@ function timeInputToMinutes(v: string): number {
   return h * 60 + m;
 }
 
-export const VoiceCommand: React.FC<Props> = ({ events, now, onAdd }) => {
+export const VoiceCommand: React.FC<Props> = ({ events, now, onAdd, onEdit, onDelete }) => {
   const categoryMeta = useCategoryMeta();
   const { settings } = useSettings();
   const [text, setText] = useState('');
   const [draft, setDraft] = useState<ParsedCommand | null>(null);
+  const [autoAdd, setAutoAdd] = useState(true);
+  const [lastAdded, setLastAdded] = useState<PlanEvent | null>(null);
+
+  const autoAddRef = useRef(autoAdd); autoAddRef.current = autoAdd;
+  const textRef = useRef('');
+  useEffect(() => { textRef.current = text; }, [text]);
+  const speechRef = useRef<ReturnType<typeof useSpeech> | null>(null);
+
+  // After a spoken phrase, add it straight to the calendar (no confirm step).
+  // Falls back to the editable draft if the phrase was too vague to parse.
+  const doAutoAdd = (src: string) => {
+    const s = src.trim();
+    if (!s) return;
+    const parsed = parseCommand(s, now);
+    if (parsed.title === 'Untitled' && parsed.confidence < 0.4) {
+      setText(s); textRef.current = s; setDraft(parsed);
+      return;
+    }
+    const ev: PlanEvent = {
+      id: newId(), title: parsed.title, date: parsed.date, start: parsed.start, duration: parsed.duration,
+      category: parsed.category, priority: parsed.priority, done: false, createdVia: 'voice', source: s,
+    };
+    onAdd(ev);
+    setLastAdded(ev);
+    setText(''); textRef.current = ''; setDraft(null);
+    speechRef.current?.reset();
+  };
 
   const handleFinal = (finalText: string) => {
-    setText(prev => (prev ? prev + ' ' : '') + finalText);
+    const next = (textRef.current ? textRef.current + ' ' : '') + finalText;
+    textRef.current = next;
+    setText(next);
+    if (autoAddRef.current) setTimeout(() => doAutoAdd(next), 0);
   };
 
   const speech = useSpeech(handleFinal);
+  speechRef.current = speech;
+
+  // Auto-dismiss the "added" confirmation after a few seconds.
+  useEffect(() => {
+    if (!lastAdded) return;
+    const t = setTimeout(() => setLastAdded(null), 9000);
+    return () => clearTimeout(t);
+  }, [lastAdded]);
 
   // The textbox is the single source of truth (handleFinal appends final chunks).
   // Interim words are shown as a separate preview, never folded into the editable value.
@@ -95,16 +135,26 @@ export const VoiceCommand: React.FC<Props> = ({ events, now, onAdd }) => {
   return (
     <div className="card bg-gradient-to-br from-primary/10 to-secondary/10 border border-base-300 shadow-md">
       <div className="card-body p-5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h2 className="card-title text-lg flex items-center gap-2">
             <Wand2 size={20} className="text-primary" /> Plan by voice
           </h2>
-          {!speech.supported && (
-            <span className="badge badge-warning badge-sm gap-1"><Keyboard size={12} /> Type mode</span>
-          )}
+          <div className="flex items-center gap-2">
+            {speech.supported && (
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Add spoken events straight to the calendar without a confirmation step">
+                <input type="checkbox" className="toggle toggle-xs toggle-primary" checked={autoAdd} onChange={e => setAutoAdd(e.target.checked)} />
+                Auto-add
+              </label>
+            )}
+            {!speech.supported && (
+              <span className="badge badge-warning badge-sm gap-1"><Keyboard size={12} /> Type mode</span>
+            )}
+          </div>
         </div>
         <p className="text-xs text-base-content/60 -mt-1">
-          Say something like “book a dentist appointment next Tuesday at 3pm”.
+          {speech.supported && autoAdd
+            ? 'Tap the mic, say your plan, and it’s added to your calendar automatically.'
+            : 'Say something like “book a dentist appointment next Tuesday at 3pm”.'}
         </p>
 
         {/* Mic + input row */}
@@ -135,6 +185,19 @@ export const VoiceCommand: React.FC<Props> = ({ events, now, onAdd }) => {
         {speech.error && (
           <div className="alert alert-warning py-2 px-3 text-xs mt-1">
             <AlertTriangle size={14} /> {speech.error}
+          </div>
+        )}
+
+        {lastAdded && (
+          <div className="alert alert-success py-2 px-3 text-xs mt-1 flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5 min-w-0">
+              <CheckCircle2 size={14} className="shrink-0" />
+              <span className="truncate">Added “{lastAdded.title}” · {relativeDayLabel(lastAdded.date, now)}{lastAdded.allDay ? '' : ` at ${minutesToLabel(lastAdded.start)}`}</span>
+            </span>
+            <span className="flex gap-1 shrink-0">
+              <button className="btn btn-ghost btn-xs gap-1" onClick={() => { onEdit?.(lastAdded); setLastAdded(null); }}><Pencil size={12} /> Edit</button>
+              <button className="btn btn-ghost btn-xs gap-1" onClick={() => { onDelete?.(lastAdded.id); setLastAdded(null); }}><Undo2 size={12} /> Undo</button>
+            </span>
           </div>
         )}
 
@@ -237,7 +300,12 @@ export const VoiceCommand: React.FC<Props> = ({ events, now, onAdd }) => {
             </div>
 
             {/* Feasibility */}
-            {feasibility && <FeasibilityBox f={feasibility} />}
+            {feasibility && (
+              <FeasibilityBox
+                f={feasibility}
+                onApplySuggestion={feasibility.suggestedStart != null ? () => updateDraft({ start: feasibility.suggestedStart }) : undefined}
+              />
+            )}
 
             <div className="flex gap-2 pt-1">
               <button className="btn btn-primary btn-sm flex-1 gap-1" onClick={confirm}>
@@ -254,7 +322,7 @@ export const VoiceCommand: React.FC<Props> = ({ events, now, onAdd }) => {
   );
 };
 
-const FeasibilityBox: React.FC<{ f: ReturnType<typeof evaluateFeasibility> }> = ({ f }) => {
+const FeasibilityBox: React.FC<{ f: ReturnType<typeof evaluateFeasibility>; onApplySuggestion?: () => void }> = ({ f, onApplySuggestion }) => {
   const tone = {
     feasible: { cls: 'border-success/40 bg-success/10 text-success', Icon: CheckCircle2 },
     tight: { cls: 'border-warning/40 bg-warning/10 text-warning', Icon: AlertTriangle },
@@ -286,6 +354,14 @@ const FeasibilityBox: React.FC<{ f: ReturnType<typeof evaluateFeasibility> }> = 
             <li key={i} className="text-xs text-base-content/70 flex gap-1">💡 <span>{s}</span></li>
           ))}
         </ul>
+      )}
+      {onApplySuggestion && f.suggestedStart != null && (
+        <button
+          className="btn btn-xs btn-primary gap-1 mt-2"
+          onClick={onApplySuggestion}
+        >
+          <CalendarClock size={13} /> Move to {minutesToLabel(f.suggestedStart)}
+        </button>
       )}
     </div>
   );

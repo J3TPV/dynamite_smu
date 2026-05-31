@@ -61,6 +61,7 @@ function Shell() {
   const saveEvent = (e: PlanEvent) =>
     setEvents(prev => (prev.some(x => x.id === e.id) ? prev.map(x => (x.id === e.id ? e : x)) : [...prev, e]));
   const toggleDone = (id: string) => setEvents(prev => prev.map(e => (e.id === id ? { ...e, done: !e.done } : e)));
+  const updateEvent = (id: string, patch: Partial<PlanEvent>) => setEvents(prev => prev.map(e => (e.id === id ? { ...e, ...patch } : e)));
   const deleteEvent = (id: string) => setEvents(prev => prev.filter(e => e.id !== id));
   const importEvents = (incoming: PlanEvent[]) => {
     if (incoming.length === 0) return;
@@ -131,7 +132,7 @@ function Shell() {
               events={events} now={now} today={todayISO}
               calView={calView} onCalView={setCalView} anchorISO={anchorISO} onAnchorISO={setAnchorISO}
               onAddEvent={openNewEvent} onEditEvent={openEditEvent} onToggleDone={toggleDone} onDelete={deleteEvent}
-              onOpenImport={() => setImportOpen(true)} onQuickAdd={quickAdd}
+              onUpdateEvent={updateEvent} onOpenImport={() => setImportOpen(true)} onQuickAdd={quickAdd}
             />
           )}
           {view === 'insights' && (

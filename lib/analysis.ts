@@ -199,6 +199,7 @@ export function evaluateFeasibility(candidate: ParsedCommand, events: PlanEvent[
 
   const reasons: string[] = [];
   const suggestions: string[] = [];
+  let suggestedStart: number | undefined;
 
   const demandingLoad = after.loadMinutes;
   const dayLabel = relativeDayLabel(candidate.date, now);
@@ -208,8 +209,12 @@ export function evaluateFeasibility(candidate: ParsedCommand, events: PlanEvent[
     verdict = 'conflict';
     reasons.push(`Overlaps with ${conflicts.map(c => `“${c.title}” (${minutesToLabel(c.start)})`).join(', ')}.`);
     const free = findFreeSlot(day, candidate.duration, hours);
-    if (free !== null) suggestions.push(`There's a free ${durationToLabel(candidate.duration)} slot at ${minutesToLabel(free)} — want that instead?`);
-    else suggestions.push('No open slot of that length today — consider a lighter day.');
+    if (free !== null && free !== candidate.start) {
+      suggestedStart = free;
+      suggestions.push(`A clear ${durationToLabel(candidate.duration)} slot opens at ${minutesToLabel(free)}.`);
+    } else {
+      suggestions.push('No open slot of that length today — consider a lighter day.');
+    }
   } else if (healthAfter < 40) {
     verdict = 'overloaded';
     reasons.push(`Adding this drops ${dayLabel}'s Time-Health to ${healthAfter}/100 (Overloaded).`);
@@ -239,6 +244,7 @@ export function evaluateFeasibility(candidate: ParsedCommand, events: PlanEvent[
     suggestions,
     healthBefore,
     healthAfter,
+    suggestedStart,
   };
 }
 

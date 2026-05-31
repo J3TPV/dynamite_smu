@@ -3,7 +3,7 @@ import { Trash2, Check } from 'lucide-react';
 import { CategoryMeta, PlanEvent } from '../lib/types';
 import { addDays, durationToLabel, minutesToLabel, toISODate, weekdayShort } from '../lib/datetime';
 import { overlaps } from '../lib/analysis';
-import { packColumns, clockHourLines, Slot } from '../lib/layout';
+import { packColumns, clockHourLines, snap, Slot } from '../lib/layout';
 import { useCategoryMeta } from './SettingsContext';
 
 const HOUR_PX = 46;
@@ -20,10 +20,12 @@ interface Props {
   onToggleDone: (id: string) => void;
   onDelete: (id: string) => void;
   onEventClick: (e: PlanEvent) => void;
+  onMoveEvent: (id: string, patch: { date: string; start: number }) => void;
+  onAddAt: (dateISO: string, startMin: number) => void;
 }
 
 export const WeekCalendar: React.FC<Props> = ({
-  events, weekStart, selectedDate, today, dayStart, dayEnd, onSelectDate, onToggleDone, onDelete, onEventClick,
+  events, weekStart, selectedDate, today, dayStart, dayEnd, onSelectDate, onToggleDone, onDelete, onEventClick, onMoveEvent, onAddAt,
 }) => {
   const categoryMeta = useCategoryMeta();
   const viewStart = dayStart;
@@ -101,15 +103,30 @@ export const WeekCalendar: React.FC<Props> = ({
             const iso = toISODate(d);
             const dayEvents = events.filter(e => e.date === iso && !e.allDay).sort((a, b) => a.start - b.start);
             const layout = packColumns(dayEvents);
+            const startFromY = (clientY: number, rectTop: number) => {
+              const mins = viewStart + ((clientY - rectTop) / HOUR_PX) * 60;
+              return Math.max(0, Math.min(snap(mins), 1440 - 15));
+            };
             return (
               <div
                 key={iso}
                 className={`relative border-l border-base-300 ${iso === selectedDate ? 'bg-primary/5' : ''}`}
                 style={{ height: totalPx }}
-                onClick={() => onSelectDate(iso)}
+                onClick={e => { const r = e.currentTarget.getBoundingClientRect(); onAddAt(iso, startFromY(e.clientY, r.top)); }}
+                onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                onDrop={e => {
+                  e.preventDefault();
+                  const raw = e.dataTransfer.getData('text/plain'); if (!raw) return;
+                  try {
+                    const { id, grabMin } = JSON.parse(raw);
+                    const r = e.currentTarget.getBoundingClientRect();
+                    const start = Math.max(0, Math.min(snap(viewStart + ((e.clientY - r.top) / HOUR_PX) * 60 - (grabMin || 0)), 1440 - 15));
+                    onMoveEvent(id, { date: iso, start });
+                  } catch { /* ignore malformed drag payload */ }
+                }}
               >
                 {lines.map(h => (
-                  <div key={h} className="absolute left-0 right-0 border-t border-base-300/60" style={{ top: ((h - viewStart) / 60) * HOUR_PX }} />
+                  <div key={h} className="absolute left-0 right-0 border-t border-base-300/60 pointer-events-none" style={{ top: ((h - viewStart) / 60) * HOUR_PX }} />
                 ))}
                 {dayEvents.map(e => (
                   <EventBlock key={e.id} e={e} slot={layout[e.id]} conflict={dayEvents.some(s => s.id !== e.id && overlaps(s, e))} meta={categoryMeta[e.category]} viewStart={viewStart} viewEnd={viewEnd} totalPx={totalPx} onToggleDone={onToggleDone} onDelete={onDelete} onEventClick={onEventClick} />
@@ -149,7 +166,14 @@ const EventBlock: React.FC<{
   return (
     <div className="absolute px-0.5" style={{ top, height, left: `${leftPct}%`, width: `${widthPct}%` }} onClick={ev => ev.stopPropagation()}>
       <div
-        className={`group relative h-full rounded-md px-1.5 py-1 overflow-hidden text-white shadow-sm cursor-pointer ${e.done ? 'opacity-50' : ''}`}
+        draggable
+        onDragStart={ev => {
+          const r = ev.currentTarget.getBoundingClientRect();
+          const grabMin = ((ev.clientY - r.top) / HOUR_PX) * 60;
+          ev.dataTransfer.setData('text/plain', JSON.stringify({ id: e.id, grabMin }));
+          ev.dataTransfer.effectAllowed = 'move';
+        }}
+        className={`group relative h-full rounded-md px-1.5 py-1 overflow-hidden text-white shadow-sm cursor-grab active:cursor-grabbing ${e.done ? 'opacity-50' : ''}`}
         style={{ backgroundColor: meta.color, outline: conflict ? '2px solid var(--color-error)' : 'none' }}
         title={`${e.title} · ${minutesToLabel(e.start)} · ${durationToLabel(e.duration)}${conflict ? ' · ⚠ overlaps another event' : ''}`}
         onClick={() => onEventClick(e)}

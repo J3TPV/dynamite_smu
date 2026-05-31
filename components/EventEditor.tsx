@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Check, X, Trash2, CalendarClock, MapPin, AlignLeft } from 'lucide-react';
 import { Category, ParsedCommand, PlanEvent, Priority } from '../lib/types';
-import { durationToLabel } from '../lib/datetime';
+import { durationToLabel, minutesToLabel } from '../lib/datetime';
 import { evaluateFeasibility } from '../lib/analysis';
 import { newId } from '../lib/storage';
 import { useSettings } from './SettingsContext';
@@ -203,9 +203,20 @@ export const EventEditor: React.FC<Props> = ({ open, event, defaultDate, default
           </label>
 
           {feasibility && (
-            <div className={`text-xs flex items-center gap-1.5 ${verdictTone[feasibility.verdict]}`}>
-              <span className="font-semibold">{feasibility.headline}</span>
-              <span className="opacity-70">· health {feasibility.healthBefore} → {feasibility.healthAfter}</span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <div className={`text-xs flex items-center gap-1.5 ${verdictTone[feasibility.verdict]}`}>
+                <span className="font-semibold">{feasibility.headline}</span>
+                <span className="opacity-70">· health {feasibility.healthBefore} → {feasibility.healthAfter}</span>
+              </div>
+              {feasibility.suggestedStart != null && (
+                <button
+                  type="button"
+                  className="btn btn-xs btn-primary gap-1"
+                  onClick={() => patch({ start: feasibility.suggestedStart })}
+                >
+                  <CalendarClock size={13} /> Move to {minutesToLabel(feasibility.suggestedStart)}
+                </button>
+              )}
             </div>
           )}
 
