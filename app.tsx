@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { CalendarClock, CalendarDays, TrendingUp, Settings as SettingsIcon, Activity } from 'lucide-react';
+import { CalendarClock, CalendarDays, TrendingUp, Settings as SettingsIcon, Activity, Undo2 } from 'lucide-react';
 import { PlanEvent } from './lib/types';
 import { loadEvents, saveEvents } from './lib/storage';
 import { computeRangeHealth } from './lib/analysis';
@@ -57,14 +57,38 @@ function Shell() {
     }
   }, [events]);
 
+  // --- Undo safety net for destructive actions (delete / clear / restore / import) ---
+  // A single-level snapshot of the event list, surfaced as a transient toast.
+  const [undo, setUndo] = useState<{ message: string; snapshot: PlanEvent[] } | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const offerUndo = (message: string, snapshot: PlanEvent[]) => {
+    setUndo({ message, snapshot });
+    clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setUndo(null), 8000);
+  };
+  const performUndo = () => { if (undo) { setEvents(undo.snapshot); setUndo(null); clearTimeout(undoTimer.current); } };
+  const dismissUndo = () => { setUndo(null); clearTimeout(undoTimer.current); };
+  useEffect(() => () => clearTimeout(undoTimer.current), []);
+
   // Event mutations
   const saveEvent = (e: PlanEvent) =>
     setEvents(prev => (prev.some(x => x.id === e.id) ? prev.map(x => (x.id === e.id ? e : x)) : [...prev, e]));
   const toggleDone = (id: string) => setEvents(prev => prev.map(e => (e.id === id ? { ...e, done: !e.done } : e)));
   const updateEvent = (id: string, patch: Partial<PlanEvent>) => setEvents(prev => prev.map(e => (e.id === id ? { ...e, ...patch } : e)));
-  const deleteEvent = (id: string) => setEvents(prev => prev.filter(e => e.id !== id));
+  const deleteEvent = (id: string) => {
+    const target = events.find(e => e.id === id);
+    if (!target) return;
+    offerUndo(`Deleted “${target.title}”`, events);
+    setEvents(prev => prev.filter(e => e.id !== id));
+  };
+  // Bulk replace (clear-all, restore-backup) — captures the prior list for undo.
+  const replaceAllEvents = (next: PlanEvent[]) => {
+    offerUndo(next.length === 0 ? `Cleared ${events.length} event${events.length === 1 ? '' : 's'}` : 'Replaced your calendar', events);
+    setEvents(next);
+  };
   const importEvents = (incoming: PlanEvent[]) => {
     if (incoming.length === 0) return;
+    offerUndo(`Imported ${incoming.length} event${incoming.length === 1 ? '' : 's'}`, events);
     setEvents(prev => [...prev, ...incoming]);
     const earliest = incoming.reduce((min, e) => (e.date < min ? e.date : min), incoming[0].date);
     setAnchorISO(earliest);
@@ -139,7 +163,7 @@ function Shell() {
             <InsightsDashboard events={events} now={now} onOpenDay={iso => { setAnchorISO(iso); setCalView('day'); setView('calendar'); }} />
           )}
           {view === 'settings' && (
-            <SettingsPage events={events} onReplaceEvents={setEvents} />
+            <SettingsPage events={events} onReplaceEvents={replaceAllEvents} />
           )}
         </main>
 
@@ -159,6 +183,17 @@ function Shell() {
         events={events} now={now} onClose={() => setEditorOpen(false)} onSave={saveEvent} onDelete={deleteEvent}
       />
       <ImportCalendar open={importOpen} existing={events} onClose={() => setImportOpen(false)} onImport={importEvents} />
+
+      {/* Undo toast — single-level safety net for destructive actions */}
+      {undo && (
+        <div className="toast toast-center toast-bottom z-50 mb-20 lg:mb-4">
+          <div className="alert bg-base-300 border border-base-content/10 shadow-lg flex-row items-center gap-3 py-2 px-3">
+            <span className="text-sm">{undo.message}</span>
+            <button className="btn btn-xs btn-primary gap-1" onClick={performUndo}><Undo2 size={13} /> Undo</button>
+            <button className="btn btn-xs btn-ghost btn-circle" onClick={dismissUndo} aria-label="Dismiss">✕</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -79,7 +79,8 @@ export const SettingsPage: React.FC<Props> = ({ events, onReplaceEvents }) => {
   };
 
   const clearAll = () => {
-    if (confirm(`Delete all ${events.length} events? This can’t be undone.`)) onReplaceEvents([]);
+    if (events.length === 0) return;
+    if (confirm(`Delete all ${events.length} events? You can undo this right after.`)) onReplaceEvents([]);
   };
 
   const modes: { id: ThemeMode; label: string; Icon: React.FC<{ size?: number }> }[] = [
