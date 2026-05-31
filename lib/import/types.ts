@@ -1,6 +1,6 @@
 // Shared types for the calendar importer (Outlook / Google / Apple migration).
 
-import { PlanEvent } from '../types';
+import { Category, PlanEvent, Priority } from '../types';
 
 export type CalendarFormat = 'ics' | 'csv' | 'pst' | 'unknown';
 
@@ -23,6 +23,12 @@ export interface ImportedEvent {
   warnings: string[];
   /** Source identity (ICS UID or a synthesized key) used to de-duplicate re-imports. */
   uid?: string;
+  /** Category from a Cadence X-CADENCE-CATEGORY hint (its own .ics export round-trip). */
+  category?: Category;
+  /** Priority from a Cadence X-CADENCE-PRIORITY hint. */
+  priority?: Priority;
+  /** Done-state from a Cadence X-CADENCE-DONE hint. */
+  done?: boolean;
 }
 
 /** A row in the import preview — a draft event the user can toggle/edit before adding. */

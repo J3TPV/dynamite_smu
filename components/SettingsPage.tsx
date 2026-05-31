@@ -1,10 +1,11 @@
 import React, { useRef } from 'react';
-import { Palette, Clock, Tag, Database, Download, Upload, RotateCcw, Sun, Moon, Monitor, Trash2, Check } from 'lucide-react';
+import { Palette, Clock, Tag, Database, Download, Upload, RotateCcw, Sun, Moon, Monitor, Trash2, Check, CalendarArrowDown } from 'lucide-react';
 import { Category, PlanEvent } from '../lib/types';
 import { THEME_PRESETS, getPreset, ThemeMode, Density } from '../lib/theme';
 import { useSettings } from './SettingsContext';
 import { mergeSettings } from '../lib/settings';
 import { sanitizeEvents } from '../lib/storage';
+import { eventsToIcs, icsFilename } from '../lib/export/ics';
 
 interface Props {
   events: PlanEvent[];
@@ -42,14 +43,22 @@ export const SettingsPage: React.FC<Props> = ({ events, onReplaceEvents }) => {
 
   const activeAccent = settings.theme.accent || getPreset(settings.theme.preset).primary;
 
-  const exportData = () => {
-    const blob = new Blob([JSON.stringify({ version: 1, events, settings }, null, 2)], { type: 'application/json' });
+  const download = (data: string, filename: string, type: string) => {
+    const blob = new Blob([data], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `cadence-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const exportData = () =>
+    download(JSON.stringify({ version: 1, events, settings }, null, 2), `cadence-backup-${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
+
+  const exportIcs = () => {
+    if (events.length === 0) { alert('No events to export yet.'); return; }
+    download(eventsToIcs(events), icsFilename(), 'text/calendar');
   };
 
   const importData = async (file: File) => {
@@ -184,9 +193,10 @@ export const SettingsPage: React.FC<Props> = ({ events, onReplaceEvents }) => {
           <button className="btn btn-sm btn-outline gap-1" onClick={exportData}><Download size={15} /> Export backup</button>
           <button className="btn btn-sm btn-outline gap-1" onClick={() => importRef.current?.click()}><Upload size={15} /> Restore backup</button>
           <input ref={importRef} type="file" accept="application/json,.json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) importData(f); }} />
+          <button className="btn btn-sm btn-outline gap-1" onClick={exportIcs}><CalendarArrowDown size={15} /> Export .ics</button>
           <button className="btn btn-sm btn-ghost text-error gap-1" onClick={clearAll}><Trash2 size={15} /> Clear all events</button>
         </div>
-        <p className="text-xs text-base-content/50 mt-2">Backups include your events and all settings as a JSON file. Everything stays on this device.</p>
+        <p className="text-xs text-base-content/50 mt-2">Backups include your events and all settings as a JSON file. Export <code>.ics</code> to move your calendar into Google, Outlook or Apple — or back into Cadence. Everything stays on this device.</p>
         <button className="btn btn-ghost btn-xs gap-1 mt-3" onClick={() => { if (confirm('Reset all settings to defaults?')) resetSettings(); }}><RotateCcw size={12} /> Reset settings to defaults</button>
       </Section>
     </div>

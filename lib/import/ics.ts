@@ -5,6 +5,7 @@
 // expansion of RRULEs (DAILY/WEEKLY/MONTHLY/YEARLY incl. positional BYDAY).
 
 import { toISODate } from '../datetime';
+import { CATEGORY_META, Category, Priority } from '../types';
 import { ImportedEvent, IMPORT_LIMITS } from './types';
 
 interface RawProp { name: string; params: Record<string, string>; value: string; }
@@ -343,6 +344,15 @@ export function parseIcs(text: string): { events: ImportedEvent[]; diagnostics: 
     const description = props.DESCRIPTION ? unescapeText(props.DESCRIPTION.value).trim() || undefined : undefined;
     const uidBase = props.UID ? props.UID.value.trim() : `${dtstart.dateISO}:${dtstart.minutes ?? 'allday'}:${title}`;
 
+    // Cadence's own .ics export carries these hints so a round-trip keeps the
+    // exact category/priority/done instead of re-inferring from the title.
+    const catHint = props['X-CADENCE-CATEGORY']?.value.trim().toLowerCase();
+    const category: Category | undefined = catHint && catHint in CATEGORY_META ? (catHint as Category) : undefined;
+    const prioHint = props['X-CADENCE-PRIORITY']?.value.trim().toLowerCase();
+    const priority: Priority | undefined = prioHint === 'low' || prioHint === 'medium' || prioHint === 'high' ? prioHint : undefined;
+    const doneHint = props['X-CADENCE-DONE']?.value.trim();
+    const done = doneHint === '1' || doneHint?.toUpperCase() === 'TRUE' ? true : undefined;
+
     const warnings: string[] = [];
     if (dtstart.tzNote) { warnings.push(dtstart.tzNote); tzNoteSeen = true; }
 
@@ -402,6 +412,9 @@ export function parseIcs(text: string): { events: ImportedEvent[]; diagnostics: 
         description,
         warnings: [...warnings],
         uid: dates.length > 1 ? `${uidBase}@${dateISO}` : uidBase,
+        category,
+        priority,
+        done,
       });
       if (events.length >= IMPORT_LIMITS.maxEvents) { hitMaxEvents = true; return; }
     }

@@ -57,9 +57,10 @@ function toPlanEvent(ev: ImportedEvent, sourceName: string): PlanEvent {
     date: ev.dateISO,
     start,
     duration,
-    category: klass.category,
-    priority: 'medium',
-    done: false,
+    // Cadence-exported files carry exact hints; foreign files fall back to NLP classification.
+    category: ev.category ?? klass.category,
+    priority: ev.priority ?? 'medium',
+    done: ev.done ?? false,
     createdVia: 'import',
     source: `Imported from ${sourceName}`,
     allDay: ev.allDay || undefined,

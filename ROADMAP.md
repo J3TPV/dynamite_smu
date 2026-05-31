@@ -10,35 +10,35 @@ Everything else (views, themes, import) is table stakes. The moat is the
 **Time-Health engine + feasibility analysis**. Each roadmap item should either
 sharpen that moat or remove friction that stops people reaching it.
 
+## Shipped
+
+- ✅ **Actionable feasibility / smart reschedule** — one-click "Move to {time}"
+  from `Feasibility.suggestedStart` in the voice draft + event editor.
+- ✅ **Drag-to-move** in Day/Week views (HTML5 DnD, 15-min snap).
+- ✅ **ICS export / round-trip** — `lib/export/ics.ts` serializes events to a
+  dependency-free, RFC-5545 VCALENDAR (line-folded, CRLF, escaped TEXT) that opens
+  in Google/Outlook/Apple **and** re-imports cleanly into Cadence. Faithful
+  round-trip via `X-CADENCE-CATEGORY/PRIORITY/DONE` hints the importer honours.
+  "Export .ics" in Settings → Your data. Covered by `tests/export.test.ts`.
+- ✅ **Test foundation** — dependency-light runner (`scripts/test.mjs`, esbuild +
+  node), growing with each feature. `npm test`.
+
 ## Next up (highest value first)
 
-1. **Actionable feasibility / smart reschedule** ← _building now_
-   The engine already finds a conflict-free slot (`findFreeSlot`) but only prints
-   it as prose — _"there's a free slot at 2 PM, want that instead?"_ — with no way
-   to act. Close the loop: surface a one-click **"Move to {time}"** in the voice
-   draft and the event editor so the analysis becomes a decision, not a report.
-
-2. **Direct manipulation — drag-to-move & drag-to-resize** in Day/Week views.
-   Clicking opens an editor; you can't grab a block and slide it. This is the
-   single most expected calendar interaction and is currently absent. Live
-   Time-Health recompute while dragging would make the moat tangible.
-
-3. **Undo / safety net** for delete, clear-all, and import-replace.
+1. **Undo / safety net** for delete, clear-all, and import-replace.
    A whole-life planner that deletes on a single click with no undo is dangerous.
    A transient "Undo" toast (event-level + bulk) is cheap insurance.
 
-4. **Recurring events (native)** — `PlanEvent.recurrence` + expansion.
+2. **Drag-to-resize** in Day/Week (drag-to-move already shipped). Grab an event's
+   bottom edge to change its duration, with 15-min snapping and live conflict
+   feedback. Completes the direct-manipulation story.
+
+3. **Recurring events (native)** — `PlanEvent.recurrence` + expansion.
    We can _import_ recurring events but not _create_ them. Biggest remaining
-   scheduling-capability gap; pairs naturally with an ICS export round-trip.
+   scheduling-capability gap; the ICS exporter should emit RRULE for these.
 
-5. **Now-line + reminders** — current-time indicator in Day/Week, and optional
+4. **Now-line + reminders** — current-time indicator in Day/Week, and optional
    `Notification`-API nudges N minutes before an event.
-
-6. **ICS export / round-trip** — we import from Google/Outlook/Apple; let users
-   export back. Completes the migration story.
-
-7. **Test & CI foundation** — lock the pure core (parser/analysis/import/datetime)
-   under a real runner. _Started with item 1_ (dependency-light esbuild + node).
 
 ## Not now (deliberately deferred)
 
