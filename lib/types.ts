@@ -16,16 +16,24 @@ export interface PlanEvent {
   title: string;
   /** ISO date, local: YYYY-MM-DD */
   date: string;
-  /** Start time as minutes from local midnight (0..1439) */
+  /** Start time as minutes from local midnight (0..1439). 0 for all-day events. */
   start: number;
-  /** Duration in minutes */
+  /** Duration in minutes. 0 for all-day events. */
   duration: number;
   category: Category;
   priority: Priority;
   done: boolean;
-  createdVia: 'voice' | 'manual';
+  createdVia: 'voice' | 'manual' | 'import';
   /** Raw transcript this event was parsed from, if any */
   source?: string;
+  /** All-day event (no specific time) — shown as a banner, excluded from time-load scoring. */
+  allDay?: boolean;
+  /** Optional location carried over from an imported calendar. */
+  location?: string;
+  /** Optional free-text notes/description carried over from an imported calendar. */
+  description?: string;
+  /** Stable source identity (e.g. ICS UID) used to de-duplicate re-imports. */
+  importUid?: string;
 }
 
 /** Result of parsing a natural-language command into a candidate event. */

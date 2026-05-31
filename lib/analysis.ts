@@ -4,15 +4,20 @@
 import { CATEGORY_META, Feasibility, HealthFactor, ParsedCommand, PlanEvent, TimeHealth } from './types';
 import { durationToLabel, minutesToLabel, relativeDayLabel } from './datetime';
 
-const DAY_START = 6 * 60; // 6:00 — start of a healthy waking day
-const DAY_END = 22 * 60; // 22:00 — protected wind-down boundary
-const WAKING_MINUTES = DAY_END - DAY_START; // 960
+export interface WorkingHours {
+  dayStart: number; // minutes from midnight — start of a healthy waking day
+  dayEnd: number;   // minutes from midnight — protected wind-down boundary
+}
+
+const DEFAULT_HOURS: WorkingHours = { dayStart: 6 * 60, dayEnd: 22 * 60 };
 const HEALTHY_LOAD = 8 * 60; // 8h of demanding work is a full, balanced day
 const HARD_LOAD = 11 * 60; // beyond this a day is overloaded
 
 function eventsOnDate(events: PlanEvent[], iso: string): PlanEvent[] {
+  // All-day events (imported banners like "Vacation" or "Holiday") carry no
+  // specific time, so they don't contribute to load/overlap/breathing-room math.
   return events
-    .filter(e => e.date === iso && !e.done)
+    .filter(e => e.date === iso && !e.done && !e.allDay)
     .sort((a, b) => a.start - b.start);
 }
 
@@ -28,10 +33,12 @@ function clamp(n: number, lo = 0, hi = 100): number {
  * Compute the Time-Health Index for a single day given its events.
  * Returns a 0..100 score plus the factor breakdown driving it.
  */
-export function computeDayHealth(events: PlanEvent[], iso: string): TimeHealth {
+export function computeDayHealth(events: PlanEvent[], iso: string, hours: WorkingHours = DEFAULT_HOURS): TimeHealth {
+  const { dayStart, dayEnd } = hours;
+  const wakingMinutes = Math.max(60, dayEnd - dayStart);
   const day = eventsOnDate(events, iso);
 
-  const demanding = day.filter(e => CATEGORY_META[e.category].demanding);
+  const demanding = day.filter(e => CATEGORY_META[e.category]?.demanding);
   const loadMinutes = demanding.reduce((s, e) => s + e.duration, 0);
   const totalBooked = day.reduce((s, e) => s + e.duration, 0);
 
@@ -74,7 +81,7 @@ export function computeDayHealth(events: PlanEvent[], iso: string): TimeHealth {
     const gap = day[i].start - (day[i - 1].start + day[i - 1].duration);
     if (gap >= 0 && gap < 10) backToBack++;
   }
-  const packed = totalBooked / WAKING_MINUTES; // 0..>1
+  const packed = totalBooked / wakingMinutes; // 0..>1
   let roomScore = 100 - backToBack * 15 - clamp(packed - 0.6, 0, 1) * 120;
   const roomFactor: HealthFactor = {
     key: 'room',
@@ -88,7 +95,7 @@ export function computeDayHealth(events: PlanEvent[], iso: string): TimeHealth {
 
   // --- Factor 4: Balance / variety across life areas ---
   const cats = new Set(day.map(e => e.category));
-  const hasRecovery = day.some(e => !CATEGORY_META[e.category].demanding);
+  const hasRecovery = day.some(e => !CATEGORY_META[e.category]?.demanding);
   let balanceScore = 50 + cats.size * 12 + (hasRecovery ? 14 : 0);
   if (day.length === 0) balanceScore = 70;
   if (demanding.length > 0 && !hasRecovery) balanceScore -= 25;
@@ -103,7 +110,7 @@ export function computeDayHealth(events: PlanEvent[], iso: string): TimeHealth {
   };
 
   // --- Factor 5: Boundary protection (early / late scheduling) ---
-  const earlyLate = day.filter(e => e.start < DAY_START || e.start + e.duration > DAY_END);
+  const earlyLate = day.filter(e => e.start < dayStart || e.start + e.duration > dayEnd);
   const boundaryFactor: HealthFactor = {
     key: 'boundary',
     label: 'Healthy hours',
@@ -111,7 +118,7 @@ export function computeDayHealth(events: PlanEvent[], iso: string): TimeHealth {
     weight: 0.15,
     detail: earlyLate.length === 0
       ? 'Everything sits within healthy waking hours.'
-      : `${earlyLate.length} event${earlyLate.length > 1 ? 's' : ''} spill outside ${minutesToLabel(DAY_START)}–${minutesToLabel(DAY_END)}.`,
+      : `${earlyLate.length} event${earlyLate.length > 1 ? 's' : ''} spill outside ${minutesToLabel(dayStart)}–${minutesToLabel(dayEnd)}.`,
   };
 
   const factors = [loadFactor, conflictFactor, roomFactor, balanceFactor, boundaryFactor];
@@ -142,8 +149,8 @@ function buildRecommendations(
 }
 
 /** Average daily health across a set of ISO dates (e.g. the visible week). */
-export function computeRangeHealth(events: PlanEvent[], isoDates: string[]): TimeHealth {
-  const days = isoDates.map(d => computeDayHealth(events, d));
+export function computeRangeHealth(events: PlanEvent[], isoDates: string[], hours: WorkingHours = DEFAULT_HOURS): TimeHealth {
+  const days = isoDates.map(d => computeDayHealth(events, d, hours));
   const score = Math.round(days.reduce((s, d) => s + d.score, 0) / days.length);
   const loadMinutes = days.reduce((s, d) => s + d.loadMinutes, 0);
   const label: TimeHealth['label'] =
@@ -169,13 +176,13 @@ export function computeRangeHealth(events: PlanEvent[], isoDates: string[]): Tim
  * Evaluate whether a candidate (parsed) task fits into the existing schedule,
  * and how it would change the day's Time-Health Index.
  */
-export function evaluateFeasibility(candidate: ParsedCommand, events: PlanEvent[], now: Date): Feasibility {
+export function evaluateFeasibility(candidate: ParsedCommand, events: PlanEvent[], now: Date, hours: WorkingHours = DEFAULT_HOURS): Feasibility {
   const day = eventsOnDate(events, candidate.date);
   const cand = { start: candidate.start, duration: candidate.duration };
 
   const conflicts = day.filter(e => overlaps(cand, e));
 
-  const healthBefore = computeDayHealth(events, candidate.date).score;
+  const healthBefore = computeDayHealth(events, candidate.date, hours).score;
   const ghost: PlanEvent = {
     id: '__candidate__',
     title: candidate.title,
@@ -187,7 +194,7 @@ export function evaluateFeasibility(candidate: ParsedCommand, events: PlanEvent[
     done: false,
     createdVia: 'voice',
   };
-  const after = computeDayHealth([...events, ghost], candidate.date);
+  const after = computeDayHealth([...events, ghost], candidate.date, hours);
   const healthAfter = after.score;
 
   const reasons: string[] = [];
@@ -200,18 +207,18 @@ export function evaluateFeasibility(candidate: ParsedCommand, events: PlanEvent[
   if (conflicts.length > 0) {
     verdict = 'conflict';
     reasons.push(`Overlaps with ${conflicts.map(c => `“${c.title}” (${minutesToLabel(c.start)})`).join(', ')}.`);
-    const free = findFreeSlot(day, candidate.duration);
+    const free = findFreeSlot(day, candidate.duration, hours);
     if (free !== null) suggestions.push(`There's a free ${durationToLabel(candidate.duration)} slot at ${minutesToLabel(free)} — want that instead?`);
     else suggestions.push('No open slot of that length today — consider a lighter day.');
   } else if (healthAfter < 40) {
     verdict = 'overloaded';
     reasons.push(`Adding this drops ${dayLabel}'s Time-Health to ${healthAfter}/100 (Overloaded).`);
-    if (CATEGORY_META[candidate.category].demanding) reasons.push(`Demanding load would reach ${durationToLabel(demandingLoad)}.`);
+    if (CATEGORY_META[candidate.category]?.demanding) reasons.push(`Demanding load would reach ${durationToLabel(demandingLoad)}.`);
     suggestions.push('Move it to a lighter day, or trade it for a lower-priority task already on the calendar.');
   } else if (healthAfter < 60 || healthBefore - healthAfter >= 12) {
     verdict = 'tight';
     reasons.push(`It fits, but ${dayLabel}'s Time-Health would be ${healthAfter}/100${healthBefore > healthAfter ? ` (down ${healthBefore - healthAfter})` : ''}.`);
-    if (CATEGORY_META[candidate.category].demanding && demandingLoad > HEALTHY_LOAD) suggestions.push('Consider a shorter session or a buffer before/after.');
+    if (CATEGORY_META[candidate.category]?.demanding && demandingLoad > HEALTHY_LOAD) suggestions.push('Consider a shorter session or a buffer before/after.');
   } else {
     verdict = 'feasible';
     reasons.push(`Fits cleanly. ${dayLabel}'s Time-Health stays healthy at ${healthAfter}/100.`);
@@ -235,14 +242,14 @@ export function evaluateFeasibility(candidate: ParsedCommand, events: PlanEvent[
   };
 }
 
-/** Find the earliest start (within 6:00–22:00) that fits `duration` without overlap. */
-export function findFreeSlot(day: PlanEvent[], duration: number): number | null {
-  const sorted = [...day].sort((a, b) => a.start - b.start);
-  let cursor = DAY_START;
+/** Find the earliest start (within the waking-hours window) that fits `duration` without overlap. */
+export function findFreeSlot(day: PlanEvent[], duration: number, hours: WorkingHours = DEFAULT_HOURS): number | null {
+  const sorted = [...day].filter(e => !e.allDay).sort((a, b) => a.start - b.start);
+  let cursor = hours.dayStart;
   for (const e of sorted) {
     if (e.start - cursor >= duration) return cursor;
     cursor = Math.max(cursor, e.start + e.duration);
   }
-  if (DAY_END - cursor >= duration) return cursor;
+  if (hours.dayEnd - cursor >= duration) return cursor;
   return null;
 }

@@ -3,9 +3,11 @@ import { Mic, MicOff, Keyboard, Check, X, Wand2, AlertTriangle, CheckCircle2, Ba
 import { useSpeech } from '../lib/useSpeech';
 import { parseCommand } from '../lib/parser';
 import { evaluateFeasibility } from '../lib/analysis';
-import { CATEGORY_META, Category, ParsedCommand, PlanEvent, Priority } from '../lib/types';
+import { Category, ParsedCommand, PlanEvent, Priority } from '../lib/types';
 import { durationToLabel, minutesToLabel } from '../lib/datetime';
 import { newId } from '../lib/storage';
+import { useCategoryMeta, useSettings } from './SettingsContext';
+import { workingHours } from '../lib/settings';
 
 interface Props {
   events: PlanEvent[];
@@ -29,6 +31,8 @@ function timeInputToMinutes(v: string): number {
 }
 
 export const VoiceCommand: React.FC<Props> = ({ events, now, onAdd }) => {
+  const categoryMeta = useCategoryMeta();
+  const { settings } = useSettings();
   const [text, setText] = useState('');
   const [draft, setDraft] = useState<ParsedCommand | null>(null);
 
@@ -38,12 +42,9 @@ export const VoiceCommand: React.FC<Props> = ({ events, now, onAdd }) => {
 
   const speech = useSpeech(handleFinal);
 
-  // Keep the textbox in sync with live transcript while listening
-  useEffect(() => {
-    if (speech.transcript) setText(speech.transcript);
-  }, [speech.transcript]);
-
-  const liveText = speech.listening && speech.interim ? `${text} ${speech.interim}`.trim() : text;
+  // The textbox is the single source of truth (handleFinal appends final chunks).
+  // Interim words are shown as a separate preview, never folded into the editable value.
+  const liveText = (speech.listening && speech.interim ? `${text} ${speech.interim}` : text).trim();
 
   const interpret = () => {
     const source = liveText.trim();
@@ -54,8 +55,8 @@ export const VoiceCommand: React.FC<Props> = ({ events, now, onAdd }) => {
 
   const feasibility = useMemo(() => {
     if (!draft) return null;
-    return evaluateFeasibility(draft, events, now);
-  }, [draft, events, now]);
+    return evaluateFeasibility(draft, events, now, workingHours(settings));
+  }, [draft, events, now, settings]);
 
   const updateDraft = (patch: Partial<ParsedCommand>) => {
     setDraft(d => (d ? { ...d, ...patch } : d));
@@ -119,7 +120,7 @@ export const VoiceCommand: React.FC<Props> = ({ events, now, onAdd }) => {
             </button>
           )}
           <textarea
-            value={liveText}
+            value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) interpret(); }}
             placeholder={speech.listening ? 'Listening…' : 'Type or speak a plan, then Interpret'}
@@ -127,6 +128,9 @@ export const VoiceCommand: React.FC<Props> = ({ events, now, onAdd }) => {
             className="textarea textarea-bordered flex-1 text-sm resize-none"
           />
         </div>
+        {speech.listening && speech.interim && (
+          <div className="text-xs italic text-base-content/50 mt-1">🎙 {speech.interim}</div>
+        )}
 
         {speech.error && (
           <div className="alert alert-warning py-2 px-3 text-xs mt-1">
@@ -210,7 +214,7 @@ export const VoiceCommand: React.FC<Props> = ({ events, now, onAdd }) => {
                   onChange={e => updateDraft({ category: e.target.value as Category })}
                   className="select select-bordered select-sm"
                 >
-                  {Object.entries(CATEGORY_META).map(([k, m]) => (
+                  {Object.entries(categoryMeta).map(([k, m]) => (
                     <option key={k} value={k}>{m.emoji} {m.label}</option>
                   ))}
                 </select>

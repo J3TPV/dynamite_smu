@@ -18,11 +18,46 @@ export function addDays(d: Date, n: number): Date {
   return next;
 }
 
-/** Monday-based start of the week containing `d`. */
-export function startOfWeek(d: Date): Date {
+/** Start of the week containing `d`. `weekStartsOn`: 0=Sunday, 1=Monday (default). */
+export function startOfWeek(d: Date, weekStartsOn: 0 | 1 = 1): Date {
   const day = d.getDay(); // 0=Sun..6=Sat
-  const diff = (day + 6) % 7; // days since Monday
+  const diff = (day - weekStartsOn + 7) % 7; // days since the week's start
   return addDays(stripTime(d), -diff);
+}
+
+export function addMonths(d: Date, n: number): Date {
+  // Clamp the day to the last valid day of the target month so e.g. May 31 + 1
+  // lands on June 30 instead of overflowing into July (skipping a month).
+  const day = d.getDate();
+  const target = new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(day, lastDay));
+  return target;
+}
+
+export function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+export function sameMonth(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
+export function monthYearLabel(d: Date): string {
+  return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
+/** The 42 days (6 weeks) covering the month of `d`, aligned to `weekStartsOn`. */
+export function monthGridDays(d: Date, weekStartsOn: 0 | 1 = 1): Date[] {
+  const first = startOfMonth(d);
+  const gridStart = startOfWeek(first, weekStartsOn);
+  return Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
+}
+
+/** Short weekday names ordered for the given week start. */
+export function weekdayHeaders(weekStartsOn: 0 | 1 = 1): string[] {
+  const base = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return Array.from({ length: 7 }, (_, i) => base[(i + weekStartsOn) % 7]);
 }
 
 export function stripTime(d: Date): Date {
