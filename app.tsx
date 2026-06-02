@@ -7,7 +7,7 @@ import { computeRangeHealth } from './lib/analysis';
 import { addDays, startOfWeek, stripTime, toISODate } from './lib/datetime';
 import { workingHours } from './lib/settings';
 import { SettingsProvider, useSettings } from './components/SettingsContext';
-import { CalendarView, CalView } from './components/CalendarView';
+import { CalendarView, CalView, AddEventOptions } from './components/CalendarView';
 import { InsightsDashboard } from './components/InsightsDashboard';
 import { SettingsPage } from './components/SettingsPage';
 import { EventEditor } from './components/EventEditor';
@@ -44,6 +44,9 @@ function Shell() {
   const [editingEvent, setEditingEvent] = useState<PlanEvent | null>(null);
   const [editorDate, setEditorDate] = useState<string>(todayISO);
   const [editorStart, setEditorStart] = useState<number | undefined>(undefined);
+  const [editorDuration, setEditorDuration] = useState<number | undefined>(undefined);
+  const [editorAllDay, setEditorAllDay] = useState(false);
+  const [editorEndDate, setEditorEndDate] = useState<string | undefined>(undefined);
   const [importOpen, setImportOpen] = useState(false);
 
   const saveFailed = useRef(false);
@@ -97,10 +100,14 @@ function Shell() {
   const quickAdd = (e: PlanEvent) => { saveEvent(e); setAnchorISO(e.date); setView('calendar'); };
 
   // Editor open helpers
-  const openNewEvent = (dateISO: string, startMin?: number) => {
-    setEditingEvent(null); setEditorDate(dateISO); setEditorStart(startMin); setEditorOpen(true);
+  const openNewEvent = (dateISO: string, opts: AddEventOptions = {}) => {
+    setEditingEvent(null); setEditorDate(dateISO); setEditorStart(opts.start); setEditorDuration(opts.duration);
+    setEditorAllDay(!!opts.allDay); setEditorEndDate(opts.endDate); setEditorOpen(true);
   };
-  const openEditEvent = (e: PlanEvent) => { setEditingEvent(e); setEditorDate(e.date); setEditorStart(undefined); setEditorOpen(true); };
+  const openEditEvent = (e: PlanEvent) => {
+    setEditingEvent(e); setEditorDate(e.date); setEditorStart(undefined); setEditorDuration(undefined);
+    setEditorAllDay(false); setEditorEndDate(undefined); setEditorOpen(true);
+  };
 
   const weekHealth = useMemo(() => {
     const ws = startOfWeek(now, settings.weekStartsOn);
@@ -179,7 +186,8 @@ function Shell() {
       </div>
 
       <EventEditor
-        open={editorOpen} event={editingEvent} defaultDate={editorDate} defaultStart={editorStart}
+        open={editorOpen} event={editingEvent} defaultDate={editorDate} defaultStart={editorStart} defaultDuration={editorDuration}
+        defaultAllDay={editorAllDay} defaultEndDate={editorEndDate}
         events={events} now={now} onClose={() => setEditorOpen(false)} onSave={saveEvent} onDelete={deleteEvent}
       />
       <ImportCalendar open={importOpen} existing={events} onClose={() => setImportOpen(false)} onImport={importEvents} />

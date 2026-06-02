@@ -90,8 +90,10 @@ function buildVevent(e: PlanEvent, dtstamp: string): string[] {
 
   if (e.allDay) {
     lines.push(`DTSTART;VALUE=DATE:${dateValue(e.date)}`);
-    // DTEND is exclusive for all-day events → the following day.
-    lines.push(`DTEND;VALUE=DATE:${dateValue(toISODate(addDays(fromISODate(e.date), 1)))}`);
+    // DTEND is exclusive for all-day events → the day after the last covered day
+    // (endDate for a multi-day span, else the start day itself).
+    const lastDay = e.endDate && e.endDate > e.date ? e.endDate : e.date;
+    lines.push(`DTEND;VALUE=DATE:${dateValue(toISODate(addDays(fromISODate(lastDay), 1)))}`);
   } else {
     lines.push(`DTSTART:${dateTimeValue(e.date, e.start)}`);
     if (e.duration > 0) lines.push(`DTEND:${dateTimeValue(e.date, e.start + e.duration)}`);

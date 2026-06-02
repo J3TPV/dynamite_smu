@@ -97,6 +97,17 @@ export function isSameISO(a: string, b: string): boolean {
   return a === b;
 }
 
+/** Whether `iso` falls within [startISO, endISO] inclusive. Safe lexicographic
+ *  compare since all values are zero-padded YYYY-MM-DD. */
+export function isoInRange(iso: string, startISO: string, endISO: string): boolean {
+  return iso >= startISO && iso <= endISO;
+}
+
+/** Whether an all-day/multi-day event covers a given calendar day. */
+export function eventCoversDate(e: { date: string; endDate?: string }, iso: string): boolean {
+  return isoInRange(iso, e.date, e.endDate ?? e.date);
+}
+
 export function relativeDayLabel(iso: string, today: Date): string {
   const target = fromISODate(iso);
   const diff = Math.round((stripTime(target).getTime() - stripTime(today).getTime()) / 86400000);

@@ -195,7 +195,9 @@ export const VoiceCommand: React.FC<Props> = ({ events, now, onAdd, onEdit, onDe
               <span className="truncate">Added “{lastAdded.title}” · {relativeDayLabel(lastAdded.date, now)}{lastAdded.allDay ? '' : ` at ${minutesToLabel(lastAdded.start)}`}</span>
             </span>
             <span className="flex gap-1 shrink-0">
-              <button className="btn btn-ghost btn-xs gap-1" onClick={() => { onEdit?.(lastAdded); setLastAdded(null); }}><Pencil size={12} /> Edit</button>
+              {/* Resolve the live event by id so Edit opens any drag/resize changes
+                  made since it was added, not the stale just-added snapshot (#8). */}
+              <button className="btn btn-ghost btn-xs gap-1" onClick={() => { const live = events.find(ev => ev.id === lastAdded.id); if (live) onEdit?.(live); setLastAdded(null); }}><Pencil size={12} /> Edit</button>
               <button className="btn btn-ghost btn-xs gap-1" onClick={() => { onDelete?.(lastAdded.id); setLastAdded(null); }}><Undo2 size={12} /> Undo</button>
             </span>
           </div>

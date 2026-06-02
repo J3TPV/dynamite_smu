@@ -19,6 +19,9 @@ export function sanitizeEvent(raw: any): PlanEvent | null {
   const date = typeof raw.date === 'string' && ISO_RE.test(raw.date) ? raw.date : null;
   if (!date) return null;
   const num = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
+  // A multi-day span is only valid for all-day events and must end after it starts.
+  const endDate = raw.allDay && typeof raw.endDate === 'string' && ISO_RE.test(raw.endDate) && raw.endDate > date
+    ? raw.endDate : undefined;
   return {
     id: typeof raw.id === 'string' && raw.id ? raw.id : newId(),
     title: typeof raw.title === 'string' && raw.title.trim() ? raw.title : 'Untitled event',
@@ -30,6 +33,7 @@ export function sanitizeEvent(raw: any): PlanEvent | null {
     done: !!raw.done,
     createdVia: raw.createdVia === 'voice' || raw.createdVia === 'import' ? raw.createdVia : 'manual',
     allDay: raw.allDay ? true : undefined,
+    endDate,
     location: typeof raw.location === 'string' ? raw.location : undefined,
     description: typeof raw.description === 'string' ? raw.description : undefined,
     source: typeof raw.source === 'string' ? raw.source : undefined,

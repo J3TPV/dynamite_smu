@@ -14,6 +14,12 @@ interface Props {
   defaultDate: string;
   /** Initial start time (minutes) for a new event, e.g. a clicked day-view slot. */
   defaultStart?: number;
+  /** Seed a new event as all-day, e.g. clicking an empty all-day banner cell. */
+  defaultAllDay?: boolean;
+  /** Initial duration (minutes) for a new event, e.g. a swept time range. */
+  defaultDuration?: number;
+  /** Initial end date for a new multi-day all-day event, e.g. a swept date span. */
+  defaultEndDate?: string;
   events: PlanEvent[];
   now: Date;
   onClose: () => void;
@@ -24,6 +30,8 @@ interface Props {
 interface Draft {
   title: string;
   date: string;
+  /** Inclusive end day for a multi-day all-day event; equals `date` for single-day. */
+  endDate: string;
   start: number;
   duration: number;
   category: Category;
@@ -40,11 +48,12 @@ const inputToMin = (v: string): number | null => {
   return (+mm[1]) * 60 + (+mm[2]);
 };
 
-function draftFrom(event: PlanEvent | null, defaultDate: string, defaultStart?: number): Draft {
+function draftFrom(event: PlanEvent | null, defaultDate: string, defaultStart?: number, defaultAllDay = false, defaultDuration?: number, defaultEndDate?: string): Draft {
   if (event) {
     return {
       title: event.title,
       date: event.date,
+      endDate: event.endDate && event.endDate > event.date ? event.endDate : event.date,
       start: event.start,
       duration: event.duration,
       category: event.category,
@@ -54,17 +63,20 @@ function draftFrom(event: PlanEvent | null, defaultDate: string, defaultStart?: 
       description: event.description ?? '',
     };
   }
-  return { title: '', date: defaultDate, start: defaultStart ?? 9 * 60, duration: 60, category: 'work', priority: 'medium', allDay: false, location: '', description: '' };
+  return {
+    title: '', date: defaultDate, endDate: defaultEndDate && defaultEndDate > defaultDate ? defaultEndDate : defaultDate,
+    start: defaultStart ?? 9 * 60, duration: defaultDuration ?? 60, category: 'work', priority: 'medium', allDay: defaultAllDay, location: '', description: '',
+  };
 }
 
-export const EventEditor: React.FC<Props> = ({ open, event, defaultDate, defaultStart, events, now, onClose, onSave, onDelete }) => {
+export const EventEditor: React.FC<Props> = ({ open, event, defaultDate, defaultStart, defaultAllDay, defaultDuration, defaultEndDate, events, now, onClose, onSave, onDelete }) => {
   const { settings, categoryMeta } = useSettings();
-  const [draft, setDraft] = useState<Draft>(() => draftFrom(event, defaultDate, defaultStart));
+  const [draft, setDraft] = useState<Draft>(() => draftFrom(event, defaultDate, defaultStart, defaultAllDay, defaultDuration, defaultEndDate));
 
   // Re-seed whenever the editor opens for a different event/date.
   useEffect(() => {
-    if (open) setDraft(draftFrom(event, defaultDate, defaultStart));
-  }, [open, event, defaultDate, defaultStart]);
+    if (open) setDraft(draftFrom(event, defaultDate, defaultStart, defaultAllDay, defaultDuration, defaultEndDate));
+  }, [open, event, defaultDate, defaultStart, defaultAllDay, defaultDuration, defaultEndDate]);
 
   // Close on Escape while open.
   useEffect(() => {
@@ -117,6 +129,8 @@ export const EventEditor: React.FC<Props> = ({ open, event, defaultDate, default
       done: event?.done ?? false,
       createdVia: event?.createdVia ?? 'manual',
       allDay: draft.allDay || undefined,
+      // A multi-day span only applies to all-day events that end after they start.
+      endDate: draft.allDay && draft.endDate > draft.date ? draft.endDate : undefined,
       location: draft.location.trim() || undefined,
       description: draft.description.trim() || undefined,
       source: event?.source,
@@ -158,9 +172,15 @@ export const EventEditor: React.FC<Props> = ({ open, event, defaultDate, default
 
           <div className="grid grid-cols-2 gap-2">
             <label className="form-control">
-              <span className="text-[0.65rem] text-base-content/50 mb-0.5">Date</span>
-              <input type="date" value={draft.date} onChange={e => patch({ date: e.target.value })} className="input input-bordered input-sm" />
+              <span className="text-[0.65rem] text-base-content/50 mb-0.5">{draft.allDay ? 'Starts' : 'Date'}</span>
+              <input type="date" value={draft.date} onChange={e => { const v = e.target.value; patch({ date: v, endDate: draft.endDate < v ? v : draft.endDate }); }} className="input input-bordered input-sm" />
             </label>
+            {draft.allDay && (
+              <label className="form-control">
+                <span className="text-[0.65rem] text-base-content/50 mb-0.5">Ends</span>
+                <input type="date" min={draft.date} value={draft.endDate} onChange={e => patch({ endDate: e.target.value < draft.date ? draft.date : e.target.value })} className="input input-bordered input-sm" />
+              </label>
+            )}
             {!draft.allDay && (
               <label className="form-control">
                 <span className="text-[0.65rem] text-base-content/50 mb-0.5">Start</span>
