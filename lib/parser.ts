@@ -212,10 +212,22 @@ function parseDuration(text: string): DurationParse {
   return { duration: null, consumed: [] };
 }
 
+/**
+ * Infer a category (and a sensible default duration) from free text using the
+ * same keyword heuristics the voice parser uses. Exported so the calendar
+ * importer can categorize events coming from Outlook/Google in the same way.
+ * Accepts raw text (any casing/spacing) — it normalizes internally.
+ */
+export function classifyText(raw: string): { category: Category; defaultDuration?: number } {
+  return classify(normalize(raw));
+}
+
 function classify(text: string): { category: Category; defaultDuration?: number } {
+  // `text` is space-padded by normalize(), so a whole-word match needs only the
+  // surrounded form. (Prefix matching would mis-read "Workshop" as work, etc.)
   for (const entry of CATEGORY_KEYWORDS) {
     for (const w of entry.words) {
-      if (text.includes(` ${w} `) || text.includes(` ${w}`)) {
+      if (text.includes(` ${w} `)) {
         return { category: entry.category, defaultDuration: entry.defaultDuration };
       }
     }

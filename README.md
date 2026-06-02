@@ -20,7 +20,16 @@ tells you whether it actually fits your life.
   **breathing room** (buffers / over-packing), **life balance** (variety +
   recovery time), and **healthy hours** (protecting early/late boundaries). It
   comes with plain-language recommendations.
+- **📥 Import from other calendars** — migrate from **Google Calendar, Outlook,
+  or Apple Calendar** by dropping in an exported **`.ics`** (iCalendar) or
+  **`.csv`** file. Cadence auto-detects the format, parses all-day vs timed
+  events, converts UTC times to your local zone, expands recurring events, and
+  infers a category for each one. You get a preview where you can deselect
+  events, fix categories, and skip duplicates before importing. (`.pst`/`.ost`
+  Outlook archives can't be read in the browser — Cadence detects them and shows
+  you how to export an `.ics`/`.csv` instead.)
 
+Everything is parsed locally in the browser — no upload, no backend, no API keys.
 Events persist in `localStorage`, so your plan is there when you come back.
 
 ## Run it
@@ -44,3 +53,6 @@ npm run build          # production build into dist/
 - `lib/parser.ts` — deterministic natural-language command parser.
 - `lib/analysis.ts` — Time-Health Index + feasibility engine (pure functions).
 - `lib/useSpeech.ts` — thin React hook over the Web Speech API.
+- `lib/import/` — dependency-free calendar importers: `ics.ts` (iCalendar),
+  `csv.ts` (Google/Outlook CSV), and `index.ts` (format detection + mapping onto
+  the `PlanEvent` model + duplicate detection).

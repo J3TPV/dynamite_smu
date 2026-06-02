@@ -1,83 +1,116 @@
 <!doctype html>
-<html data-theme="alfred-light">
+<html data-theme="cadence-light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Cadence — Voice Calendar Planner</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5" type="text/css" />
-    <style>[data-theme='alfred-light'] {
-  color-scheme: light;
-  --radius-selector: 0rem;
-  --radius-field: 0.25rem;
-  --radius-box: 0.25rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 1;
-  --noise: 0;
-  --color-base-100: #f5f5f5;
-  --color-base-200: #eaeaea;
-  --color-base-300: #dfdfdf;
-  --color-base-content: #1c1c1e;
-  --color-primary: #4f6f52;
-  --color-primary-content: #ffffff;
-  --color-secondary: #ff7f50;
-  --color-secondary-content: #1c1c1e;
-  --color-accent: #ff7f50;
-  --color-accent-content: #1c1c1e;
-  --color-neutral: #1f1f23;
-  --color-neutral-content: #e8e8ec;
-  --color-info: #4a7c9b;
-  --color-info-content: #f4f4f5;
-  --color-success: #3d8b6e;
-  --color-success-content: #f4f4f5;
-  --color-warning: #b8860b;
-  --color-warning-content: #1c1c1e;
-  --color-error: #9e3d32;
-  --color-error-content: #f4f4f5;
-}
-[data-theme='alfred-dark'] {
-  color-scheme: dark;
-  --radius-selector: 0rem;
-  --radius-field: 0.25rem;
-  --radius-box: 0.25rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 1;
-  --noise: 0;
-  --color-base-100: #121215;
-  --color-base-200: #1a1a1e;
-  --color-base-300: #252529;
-  --color-base-content: #f4f4f5;
-  --color-primary: #4f6f52;
-  --color-primary-content: #ffffff;
-  --color-secondary: #ff7f50;
-  --color-secondary-content: #1c1c1e;
-  --color-accent: #ff7f50;
-  --color-accent-content: #1c1c1e;
-  --color-neutral: #3a3a42;
-  --color-neutral-content: #b8b8c0;
-  --color-info: #4a7c9b;
-  --color-info-content: #f4f4f5;
-  --color-success: #3d8b6e;
-  --color-success-content: #f4f4f5;
-  --color-warning: #b8860b;
-  --color-warning-content: #1c1c1e;
-  --color-error: #9e3d32;
-  --color-error-content: #f4f4f5;
-}
-</style>
+    <style>
+      [data-theme='cadence-light'] {
+        color-scheme: light;
+        --radius-selector: 0.5rem;
+        --radius-field: 0.5rem;
+        --radius-box: 0.9rem;
+        --size-selector: 0.25rem;
+        --size-field: 0.25rem;
+        --border: 1px;
+        --depth: 1;
+        --noise: 0;
+        --color-base-100: #ffffff;
+        --color-base-200: #f4f4f6;
+        --color-base-300: #e6e6ea;
+        --color-base-content: #1c1c1e;
+        --color-primary: #4f6f52;
+        --color-primary-content: #ffffff;
+        --color-secondary: #ff7f50;
+        --color-secondary-content: #1c1c1e;
+        --color-accent: #ff7f50;
+        --color-accent-content: #1c1c1e;
+        --color-neutral: #1f2430;
+        --color-neutral-content: #f5f6f8;
+        --color-info: #3b82f6;
+        --color-info-content: #ffffff;
+        --color-success: #16a34a;
+        --color-success-content: #ffffff;
+        --color-warning: #d97706;
+        --color-warning-content: #ffffff;
+        --color-error: #dc2626;
+        --color-error-content: #ffffff;
+      }
+      [data-theme='cadence-dark'] {
+        color-scheme: dark;
+        --radius-selector: 0.5rem;
+        --radius-field: 0.5rem;
+        --radius-box: 0.9rem;
+        --size-selector: 0.25rem;
+        --size-field: 0.25rem;
+        --border: 1px;
+        --depth: 1;
+        --noise: 0;
+        --color-base-100: #101014;
+        --color-base-200: #18181d;
+        --color-base-300: #26262e;
+        --color-base-content: #f3f4f6;
+        --color-primary: #4f6f52;
+        --color-primary-content: #ffffff;
+        --color-secondary: #ff7f50;
+        --color-secondary-content: #1c1c1e;
+        --color-accent: #ff7f50;
+        --color-accent-content: #1c1c1e;
+        --color-neutral: #e6e7ea;
+        --color-neutral-content: #18181b;
+        --color-info: #3b82f6;
+        --color-info-content: #ffffff;
+        --color-success: #16a34a;
+        --color-success-content: #ffffff;
+        --color-warning: #d97706;
+        --color-warning-content: #ffffff;
+        --color-error: #dc2626;
+        --color-error-content: #ffffff;
+      }
+    </style>
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
     <script>
-      (function() {
-        var theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'alfred-dark' : 'alfred-light';
-        document.documentElement.setAttribute('data-theme', theme);
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-          document.documentElement.setAttribute('data-theme', e.matches ? 'alfred-dark' : 'alfred-light');
-        });
+      // No-flash theme bootstrap: apply the saved mode AND preset/accent/density
+      // before React mounts, so non-default themes don't flash the Alfred palette.
+      // Mirrors lib/theme.ts applyTheme — keep the two in sync.
+      (function () {
+        var PRESETS = {
+          alfred: ['#4f6f52', '#ff7f50', '#ff7f50'], indigo: ['#5b6cff', '#22d3ee', '#a855f7'],
+          ocean: ['#0ea5b7', '#3b82f6', '#14b8a6'], sunset: ['#f97316', '#ec4899', '#f59e0b'],
+          forest: ['#3d8b6e', '#84cc16', '#10b981'], rose: ['#e11d48', '#fb7185', '#f43f5e'],
+          grape: ['#7c3aed', '#d946ef', '#8b5cf6'], mono: ['#52525b', '#71717a', '#a1a1aa'],
+        };
+        function lum(hex) {
+          var h = hex.replace('#', ''); if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+          var f = function (c) { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+          return 0.2126 * f(parseInt(h.slice(0, 2), 16)) + 0.7152 * f(parseInt(h.slice(2, 4), 16)) + 0.0722 * f(parseInt(h.slice(4, 6), 16));
+        }
+        var DARK_LUM = lum('#1c1c1e');
+        function content(hex) { var L = lum(hex); return (L + 0.05) / (DARK_LUM + 0.05) >= 1.05 / (L + 0.05) ? '#1c1c1e' : '#ffffff'; }
+        function isHex(s) { return typeof s === 'string' && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s); }
+        try {
+          var s = {}; var raw = localStorage.getItem('cadence.settings.v1'); if (raw) s = JSON.parse(raw) || {};
+          var t = s.theme || {};
+          var mode = t.mode || 'system';
+          var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var root = document.documentElement;
+          root.setAttribute('data-theme', dark ? 'cadence-dark' : 'cadence-light');
+          var trip = PRESETS[t.preset] || PRESETS.alfred;
+          var primary = isHex(t.accent) ? t.accent : trip[0];
+          var accent = isHex(t.accent) ? t.accent : trip[2];
+          root.style.setProperty('--color-primary', primary);
+          root.style.setProperty('--color-primary-content', content(primary));
+          root.style.setProperty('--color-secondary', trip[1]);
+          root.style.setProperty('--color-secondary-content', content(trip[1]));
+          root.style.setProperty('--color-accent', accent);
+          root.style.setProperty('--color-accent-content', content(accent));
+          root.style.fontSize = t.density === 'compact' ? '14.5px' : '16px';
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'cadence-light');
+        }
       })();
     </script>
   </head>

@@ -16,16 +16,30 @@ export interface PlanEvent {
   title: string;
   /** ISO date, local: YYYY-MM-DD */
   date: string;
-  /** Start time as minutes from local midnight (0..1439) */
+  /** Start time as minutes from local midnight (0..1439). 0 for all-day events. */
   start: number;
-  /** Duration in minutes */
+  /** Duration in minutes. 0 for all-day events. */
   duration: number;
   category: Category;
   priority: Priority;
   done: boolean;
-  createdVia: 'voice' | 'manual';
+  createdVia: 'voice' | 'manual' | 'import';
   /** Raw transcript this event was parsed from, if any */
   source?: string;
+  /** All-day event (no specific time) — shown as a banner, excluded from time-load scoring. */
+  allDay?: boolean;
+  /**
+   * Inclusive last day for a multi-day all-day event (YYYY-MM-DD). Present only
+   * when the event spans more than one day (endDate > date); single-day events
+   * omit it. Only meaningful together with `allDay`.
+   */
+  endDate?: string;
+  /** Optional location carried over from an imported calendar. */
+  location?: string;
+  /** Optional free-text notes/description carried over from an imported calendar. */
+  description?: string;
+  /** Stable source identity (e.g. ICS UID) used to de-duplicate re-imports. */
+  importUid?: string;
 }
 
 /** Result of parsing a natural-language command into a candidate event. */
@@ -93,4 +107,10 @@ export interface Feasibility {
   /** Time-health of the day before and after adding the candidate */
   healthBefore: number;
   healthAfter: number;
+  /**
+   * A conflict-free start time (minutes from midnight) the candidate could move
+   * to on the same day, when its current slot clashes. Lets the UI offer a
+   * one-click "Move to {time}" instead of just describing the free slot.
+   */
+  suggestedStart?: number;
 }
